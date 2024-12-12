@@ -35,6 +35,51 @@ def getContractInfo(chain):
 def get_contract(w3, address, abi):
     return w3.eth.contract(address=address, abi=abi)
 
+def register_and_create_tokens():
+    w3_source = connect_to_chain('avax')
+    w3_destination = connect_to_chain('bsc')
+
+    # Load contract information
+    source_info = get_contract_info("source")
+    destination_info = get_contract_info("destination")
+
+    source_contract = get_contract(w3_source, source_info['address'], source_info['abi'])
+    destination_contract = get_contract(w3_destination, destination_info['address'], destination_info['abi'])
+
+    # Warden private key
+    warden_private_key = "69593227abfe0f42dea95240ad20f1173618585b38a326352e1076cd0642f157"
+    warden_address = w3_source.eth.account.from_key(warden_private_key).address
+
+    # Token address
+    token_address = "0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c"
+
+    # Register token on source contract
+    nonce = w3_source.eth.get_transaction_count(warden_address)
+    tx_register = source_contract.functions.registerToken(token_address).build_transaction({
+        "chainId": w3_source.eth.chain_id,
+        "gas": 300000,
+        "gasPrice": w3_source.toWei("10", "gwei"),
+        "nonce": nonce,
+    })
+    signed_tx_register = w3_source.eth.account.sign_transaction(tx_register, private_key=warden_private_key)
+    w3_source.eth.send_raw_transaction(signed_tx_register.rawTransaction)
+    print(f"Registered token {token_address} on source chain")
+
+    # Create token on destination contract
+    nonce = w3_destination.eth.get_transaction_count(warden_address)
+    tx_create = destination_contract.functions.createToken(
+        token_address, "WrappedToken", "WTKN"
+    ).build_transaction({
+        "chainId": w3_destination.eth.chain_id,
+        "gas": 300000,
+        "gasPrice": w3_destination.toWei("10", "gwei"),
+        "nonce": nonce,
+    })
+    signed_tx_create = w3_destination.eth.account.sign_transaction(tx_create, private_key=warden_private_key)
+    w3_destination.eth.send_raw_transaction(signed_tx_create.rawTransaction)
+    print(f"Created token {token_address} on destination chain")
+
+
 # Main scanning logic
 def scanBlocks(chain_name, other_chain_name):
     w3_source = connect_to_chain(chain_name)
@@ -121,4 +166,5 @@ def scanBlocks(chain_name, other_chain_name):
         time.sleep(10)  # Delay to avoid spamming requests
 
 if __name__ == "__main__":
+    register_and_create_tokens()
     scan_blocks(source_chain, destination_chain)
