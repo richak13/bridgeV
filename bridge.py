@@ -91,7 +91,9 @@ def create_token(destination_w3, destination_contract_address, token_address, pr
     return True
 
 def scanBlocks(chain):
-    # ... (Existing scanBlocks function)
+     if chain not in ['source','destination']:
+        print( f"Invalid chain: {chain}" )
+        return
 
 if __name__ == "__main__":
     source_w3 = connectTo(source_chain)
