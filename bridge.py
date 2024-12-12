@@ -8,7 +8,7 @@ source_chain = 'avax'
 destination_chain = 'bsc'
 contract_info_file = "contract_info.json"
 private_key = "69593227abfe0f42dea95240ad20f1173618585b38a326352e1076cd0642f157"
-token_address = "0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c"  # Replace if incorrect
+token_address = "0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c"
 
 # Connect to blockchain
 def connectTo(chain):
