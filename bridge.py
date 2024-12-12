@@ -10,7 +10,7 @@ contract_info_file = "contract_info.json"
 
 # Connect to blockchain
 
-def connect_to_chain(chain):
+def connectTo(chain):
     if chain == 'avax':
         api_url = "https://api.avax-test.network/ext/bc/C/rpc"  # AVAX C-chain testnet
     elif chain == 'bsc':
@@ -25,7 +25,7 @@ def connect_to_chain(chain):
     return w3
 
 # Load contract information
-def get_contract_info(chain):
+def getContractInfo(chain):
     p = Path(__file__).with_name(contract_info_file)
     with p.open('r') as f:
         contracts = json.load(f)
@@ -36,7 +36,7 @@ def get_contract(w3, address, abi):
     return w3.eth.contract(address=address, abi=abi)
 
 # Main scanning logic
-def scan_blocks(chain_name, other_chain_name):
+def scanBlocks(chain_name, other_chain_name):
     w3_source = connect_to_chain(chain_name)
     w3_destination = connect_to_chain(other_chain_name)
 
