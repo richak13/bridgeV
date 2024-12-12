@@ -49,6 +49,11 @@ def registerToken():
         # Warden address
         warden_address = w3_source.eth.account.from_key(private_key).address
 
+        # Check balance of the account
+        balance = w3_source.eth.get_balance(warden_address)
+        print(f"Warden balance on source chain: {w3_source.fromWei(balance, 'ether')} AVAX")
+
+
         # Register token on source chain
         nonce = w3_source.eth.get_transaction_count(warden_address)
         tx_register = source_contract.functions.registerToken(token_address).build_transaction({
