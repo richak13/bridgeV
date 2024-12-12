@@ -12,11 +12,34 @@ destination_chain = 'bsc'
 contract_info = "contract_info.json"
 
 def connectTo(chain):
-    # ... (Existing connectTo function)
+    """
+    Connect to the Avalanche or BNB chain testnet
+    """
+    if chain == 'avax':
+        api_url = f"https://api.avax-test.network/ext/bc/C/rpc"  # AVAX C-chain testnet
+
+    if chain == 'bsc':
+        api_url = f"https://data-seed-prebsc-1-s1.binance.org:8545/"  # BSC testnet
+
+    if chain in ['avax', 'bsc']:
+        w3 = Web3(Web3.HTTPProvider(api_url))
+        if not w3.isConnected():
+            print(f"Failed to connect to {chain} chain")
+            sys.exit(1)
+        return w3
 
 def getContractInfo(chain):
-    # ... (Existing getContractInfo function)
+    """
+    Load the contract_info file into a dictionary
+    """
+    try:
+        with open(contract_info, 'r') as f:
+            contracts = json.load(f)
+    except Exception as e:
+        print(f"Error reading contract_info.json: {e}")
+        sys.exit(1)
 
+    return contracts[chain]
 def register_token(source_w3, source_contract_address, token_address, private_key):
     with open('Source_contract_abi.json', 'r') as f:
         source_contract_abi = json.load(f)
