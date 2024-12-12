@@ -9,7 +9,6 @@ destination_chain = 'bsc'
 contract_info_file = "contract_info.json"
 
 # Connect to blockchain
-
 def connectTo(chain):
     if chain == 'avax':
         api_url = "https://api.avax-test.network/ext/bc/C/rpc"  # AVAX C-chain testnet
@@ -22,6 +21,7 @@ def connectTo(chain):
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
     if not w3.isConnected():
         raise ConnectionError(f"Failed to connect to {chain} chain")
+    print(f"Connected to {chain} chain")
     return w3
 
 # Load contract information
@@ -36,12 +36,15 @@ def get_contract(w3, address, abi):
     return w3.eth.contract(address=address, abi=abi)
 
 def register_and_create_tokens():
-    w3_source = connect_to_chain('avax')
-    w3_destination = connect_to_chain('bsc')
+    w3_source = connectTo('avax')
+    w3_destination = connectTo('bsc')
 
     # Load contract information
-    source_info = get_contract_info("source")
-    destination_info = get_contract_info("destination")
+    source_info = getContractInfo("source")
+    destination_info = getContractInfo("destination")
+
+    print(f"Source Contract Address: {source_info['address']}")
+    print(f"Destination Contract Address: {destination_info['address']}")
 
     source_contract = get_contract(w3_source, source_info['address'], source_info['abi'])
     destination_contract = get_contract(w3_destination, destination_info['address'], destination_info['abi'])
@@ -54,39 +57,48 @@ def register_and_create_tokens():
     token_address = "0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c"
 
     # Register token on source contract
-    nonce = w3_source.eth.get_transaction_count(warden_address)
-    tx_register = source_contract.functions.registerToken(token_address).build_transaction({
-        "chainId": w3_source.eth.chain_id,
-        "gas": 300000,
-        "gasPrice": w3_source.toWei("10", "gwei"),
-        "nonce": nonce,
-    })
-    signed_tx_register = w3_source.eth.account.sign_transaction(tx_register, private_key=warden_private_key)
-    w3_source.eth.send_raw_transaction(signed_tx_register.rawTransaction)
-    print(f"Registered token {token_address} on source chain")
+    try:
+        nonce = w3_source.eth.get_transaction_count(warden_address)
+        tx_register = source_contract.functions.registerToken(token_address).build_transaction({
+            "chainId": w3_source.eth.chain_id,
+            "gas": 300000,
+            "gasPrice": w3_source.toWei("10", "gwei"),
+            "nonce": nonce,
+        })
+        signed_tx_register = w3_source.eth.account.sign_transaction(tx_register, private_key=warden_private_key)
+        tx_hash_register = w3_source.eth.send_raw_transaction(signed_tx_register.rawTransaction)
+        print(f"RegisterToken Transaction Hash: {tx_hash_register.hex()}")
+        receipt_register = w3_source.eth.wait_for_transaction_receipt(tx_hash_register)
+        print(f"RegisterToken Transaction Receipt: {receipt_register}")
+    except Exception as e:
+        print(f"Error during registerToken: {e}")
 
     # Create token on destination contract
-    nonce = w3_destination.eth.get_transaction_count(warden_address)
-    tx_create = destination_contract.functions.createToken(
-        token_address, "WrappedToken", "WTKN"
-    ).build_transaction({
-        "chainId": w3_destination.eth.chain_id,
-        "gas": 300000,
-        "gasPrice": w3_destination.toWei("10", "gwei"),
-        "nonce": nonce,
-    })
-    signed_tx_create = w3_destination.eth.account.sign_transaction(tx_create, private_key=warden_private_key)
-    w3_destination.eth.send_raw_transaction(signed_tx_create.rawTransaction)
-    print(f"Created token {token_address} on destination chain")
-
+    try:
+        nonce = w3_destination.eth.get_transaction_count(warden_address)
+        tx_create = destination_contract.functions.createToken(
+            token_address, "WrappedToken", "WTKN"
+        ).build_transaction({
+            "chainId": w3_destination.eth.chain_id,
+            "gas": 300000,
+            "gasPrice": w3_destination.toWei("10", "gwei"),
+            "nonce": nonce,
+        })
+        signed_tx_create = w3_destination.eth.account.sign_transaction(tx_create, private_key=warden_private_key)
+        tx_hash_create = w3_destination.eth.send_raw_transaction(signed_tx_create.rawTransaction)
+        print(f"CreateToken Transaction Hash: {tx_hash_create.hex()}")
+        receipt_create = w3_destination.eth.wait_for_transaction_receipt(tx_hash_create)
+        print(f"CreateToken Transaction Receipt: {receipt_create}")
+    except Exception as e:
+        print(f"Error during createToken: {e}")
 
 # Main scanning logic
 def scanBlocks(chain_name, other_chain_name):
-    w3_source = connect_to_chain(chain_name)
-    w3_destination = connect_to_chain(other_chain_name)
+    w3_source = connectTo(chain_name)
+    w3_destination = connectTo(other_chain_name)
 
-    source_info = get_contract_info("source")
-    destination_info = get_contract_info("destination")
+    source_info = getContractInfo("source")
+    destination_info = getContractInfo("destination")
 
     source_contract = get_contract(w3_source, source_info['address'], source_info['abi'])
     destination_contract = get_contract(w3_destination, destination_info['address'], destination_info['abi'])
@@ -124,9 +136,8 @@ def scanBlocks(chain_name, other_chain_name):
                         })
 
                         signed_tx = w3_destination.eth.account.sign_transaction(tx, private_key=warden_private_key)
-                        w3_destination.eth.send_raw_transaction(signed_tx.rawTransaction)
-                        print(f"Called wrap() on destination chain for token {token} and recipient {recipient}")
-
+                        tx_hash = w3_destination.eth.send_raw_transaction(signed_tx.rawTransaction)
+                        print(f"Wrap Transaction Hash: {tx_hash.hex()}")
                 except Exception as e:
                     print(f"Error processing transaction {tx.hash.hex()}: {e}")
 
@@ -157,14 +168,19 @@ def scanBlocks(chain_name, other_chain_name):
                         })
 
                         signed_tx = w3_source.eth.account.sign_transaction(tx, private_key=warden_private_key)
-                        w3_source.eth.send_raw_transaction(signed_tx.rawTransaction)
-                        print(f"Called withdraw() on source chain for token {wrapped_token} and recipient {recipient}")
-
+                        tx_hash = w3_source.eth.send_raw_transaction(signed_tx.rawTransaction)
+                        print(f"Withdraw Transaction Hash: {tx_hash.hex()}")
                 except Exception as e:
                     print(f"Error processing transaction {tx.hash.hex()}: {e}")
 
         time.sleep(10)  # Delay to avoid spamming requests
 
 if __name__ == "__main__":
-    register_and_create_tokens()
-    scan_blocks(source_chain, destination_chain)
+    try:
+        print("Starting token registration and creation...")
+        register_and_create_tokens()
+        print("Tokens registered and created successfully.")
+        print("Starting block scanning...")
+        scanBlocks(source_chain, destination_chain)
+    except Exception as e:
+        print(f"An error occurred: {e}")
